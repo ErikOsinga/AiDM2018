@@ -25,7 +25,7 @@ def create_X(ratings):
 	return X
 
 
-def five_fold_CV():
+def five_fold_CV_forloops():
 
 	# Proposed parameters
 	num_factors = 10 
@@ -33,7 +33,7 @@ def five_fold_CV():
 	regularization = 0.05
 	learn_rate = 0.005
 
-	nfolds=2
+	nfolds = 2
 	for fold in range(nfolds):
 		np.random.seed(23)
 		print ('Fold number: %i'%fold)
@@ -62,17 +62,21 @@ def five_fold_CV():
 				for j in range(X_train.shape[1]):
 					# prediction 
 					xhat_ij = np.dot(U[i,:],M[:,j])
-					e_ij = X[i,j] - xhat_ij
+					e_ij = X_train[i,j] - xhat_ij
 					for k in range(num_factors):
 						U[i,k] = U[i,k] + learn_rate * ( 2*e_ij * M[k,j] - regularization * U[i,k] )
 						M[k,j] = M[k,j] + learn_rate * ( 2*e_ij * U[i,k] - regularization * M[k,j] )
 
 			SE = 0
 			for i in range(X_test.shape[0]):
-				for j in range(X_test.shape[0]):
+				for j in range(X_test.shape[1]):
 					SE += np.power(X_test[i,j] - np.dot(U[i,:],M[:,j]),2)
+			print ('Iteration: %i, SE = %f'%(iterate,SE))
 			if SE > prev_SE:
 				print ('SE did not decrease, from %f to %f'%(prev_SE,SE))
 				break
+			prev_SE = SE
 
+
+five_fold_CV_forloops()
 
