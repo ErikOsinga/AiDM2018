@@ -5,6 +5,9 @@ from sklearn import linear_model
 # UserID::MovieID::Rating::Timestamp
 ratings = np.loadtxt('./ml-1m/ratings.dat',delimiter="::")
 
+all_users = np.unique(ratings[:,0])
+all_items = np.unique(ratings[:,1])	 
+
 # Array of shape 
 # MovieID::Title::Genres
 # movies = np.loadtxt('./ml-1m/movies.dat',delimiter="::",dtype='str')
@@ -30,11 +33,6 @@ def user_mean(ratings,user):
 	user_ratings = ratings[ratings[:,0] == user]
 	prediction = np.mean(user_ratings[:,2])
 	return prediction
-
-# Calculate all user means and item means into a dictionary
-# For quick accessing
-all_users = np.unique(ratings[:,0])
-all_items = np.unique(ratings[:,1])	 
 
 def five_fold_CV(ratings):
 	'''Test the linear regression model with 5-fold CV '''
