@@ -202,3 +202,6 @@ def five_fold_CV():
 	return U, M
 
 U, M = five_fold_CV()
+
+np.save('./U_array',U)
+np.save('./M_array',M)
