@@ -30,7 +30,7 @@ def create_X(ratings):
 
 	return X
 
-def split_X_nfold(X,nfolds,fold):
+def split_X_nfold_forloops(X,nfolds,fold):
 	'''
 	Split X in a train and test set
 	To split in 5 folds we mask 1/5 of what is now unmasked in X
@@ -70,6 +70,40 @@ def split_X_nfold(X,nfolds,fold):
 
 	return X_train, X_test
 
+def split_X_nfold(X,nfolds,fold):
+	'''
+	Split X in a train and test set
+	To split in 5 folds we simply use the indices of the 
+	(user,movie) combinations that exist in X
+	split these in 4/5 and 1/5 and return these indices
+	'''
+
+	# all (user,movie) pairs that exist in the ratings.dat file
+	# are combinations of (i[k],j[k]) for k in (0,len(ratings))
+	i, j = np.where(X.mask == False)
+
+	seqs=[x%nfolds for x in range(len(ratings))]
+	np.random.shuffle(seqs)
+
+	# array of len(ratings) containing 4/5*len(ratings) True's
+	train_sel = np.array([x!=fold for x in seqs])
+	train_users = i[train_sel]
+	train_movies = j[train_sel]
+
+	# test sel is then the other 1/5 of the ratings.
+	test_sel = np.array([x==fold for x in seqs])
+	test_users = i[test_sel]
+	test_movies = j[test_sel]
+
+	'''
+	# e.g., for looping over  all training (user,movie) combinations:
+	for k in range(len(train_users)):
+		user, movie = train_users[k], train_movies[k]
+	'''
+
+	# Return the (user,movie) combination splits
+	return train_users, train_movies, test_users, test_movies
+
 def five_fold_CV_forloops():
 
 	# Proposed parameters
@@ -84,7 +118,7 @@ def five_fold_CV_forloops():
 	for fold in range(nfolds):
 		print ('Fold number: %i'%fold)
 	
-		X_train, X_test = split_X_nfold(X,nfolds,fold)
+		X_train, X_test = split_X_nfold_forloops(X,nfolds,fold)
 
 		# Initializing from the standard normal dist
 		U = np.random.randn(len(all_users),num_factors)
@@ -116,5 +150,55 @@ def five_fold_CV_forloops():
 				break
 			prev_SE = SE
 
-five_fold_CV_forloops()
+# five_fold_CV_forloops()
 
+def five_fold_CV():
+
+	# Proposed parameters
+	num_factors = 10 
+	num_iter = 75
+	regularization = 0.05
+	learn_rate = 0.005
+
+	X = create_X(ratings)
+
+	nfolds = 5
+	for fold in range(nfolds):
+		print ('Fold number: %i'%fold)
+	
+		train_users,train_movies,test_users,test_movies = split_X_nfold(X,nfolds,fold)
+
+		# Initializing from the standard normal dist
+		U = np.random.randn(len(all_users),num_factors)
+		M = np.random.randn(num_factors,len(all_items))
+
+		prev_SE = 10e8
+		for iterate in range(num_iter):
+			
+			# loop through the training (user,movie) combinations
+			for l in range(len(train_users)):
+				i, j = train_users[l], train_movies[l]
+				xhat_ij = np.dot(U[i,:],M[:,j])
+				e_ij = X[i,j] - xhat_ij
+
+				for k in range(num_factors):
+					U[i,k] = U[i,k] + learn_rate * ( 2*e_ij * M[k,j] - regularization * U[i,k] )
+					M[k,j] = M[k,j] + learn_rate * ( 2*e_ij * U[i,k] - regularization * M[k,j] )
+
+			SE = 0
+			# loop through the test (user,movie) combinations
+			for l in range(len(test_users)):
+				i, j = test_users[l], test_movies[l]
+				SE += np.power(X[i,j] - np.dot(U[i,:],M[:,j]),2)
+			
+			# Check if SE decreased
+			print ('Iteration: %i, SE = %f'%(iterate,SE))
+			if SE > prev_SE:
+				print ('SE did not decrease, from %f to %f'%(prev_SE,SE))
+				print ('Thus stopping fold number %i \n'%fold)
+				break
+			prev_SE = SE
+
+	return U, M
+
+U, M = five_fold_CV()
