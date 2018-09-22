@@ -30,46 +30,6 @@ def create_X(ratings):
 
 	return X
 
-def split_X_nfold_forloops(X,nfolds,fold):
-	'''
-	Split X in a train and test set
-	To split in 5 folds we mask 1/5 of what is now unmasked in X
-	'''
-	train_mask = np.copy(X.mask)
-	test_mask = np.copy(X.mask)
-
-	# all (user,movie) pairs that exist in the ratings.dat file
-	# are combinations of (i[k],j[k]) for k in (0,len(ratings))
-	i, j = np.where(X.mask == False)
-
-	seqs=[x%nfolds for x in range(len(ratings))]
-	np.random.shuffle(seqs)
-
-	# array of len(ratings) containing 4/5*len(ratings) True's
-	train_sel = np.array([x!=fold for x in seqs])
-	train_users = i[train_sel]
-	train_movies = j[train_sel]
-
-	# test sel is then the other 1/5 of the ratings.
-	test_sel = np.array([x==fold for x in seqs])
-	test_users = i[test_sel]
-	test_movies = j[test_sel]
-
-	# remove the test_users from the training set by masking it 
-	for k in range(len(test_users)):
-		user, movie = test_users[k], test_movies[k]
-		train_mask[user,movie] = True
-
-	# remove the train users from the test set by masking them
-	for k in range(len(train_users)):
-		user, movie = train_users[k], train_movies[k]
-		test_mask[user,movie] = True
-
-	X_train = ma.array(X,mask=train_mask)
-	X_test = ma.array(X,mask=test_mask)
-
-	return X_train, X_test
-
 def split_X_nfold(X,nfolds,fold):
 	'''
 	Split X in a train and test set
@@ -95,62 +55,23 @@ def split_X_nfold(X,nfolds,fold):
 	test_users = i[test_sel]
 	test_movies = j[test_sel]
 
-	'''
-	# e.g., for looping over  all training (user,movie) combinations:
+	# Define a train/test mask on the array X 
+	train_mask = np.ones((X.shape[0],X.shape[1]),dtype='bool')
+	test_mask = np.ones((X.shape[0],X.shape[1]),dtype='bool')
+
 	for k in range(len(train_users)):
 		user, movie = train_users[k], train_movies[k]
-	'''
-
-	# Return the (user,movie) combination splits
-	return train_users, train_movies, test_users, test_movies
-
-def five_fold_CV_forloops():
-
-	# Proposed parameters
-	num_factors = 10 
-	num_iter = 75
-	regularization = 0.05
-	learn_rate = 0.005
-
-	X = create_X(ratings)
-
-	nfolds = 5
-	for fold in range(nfolds):
-		print ('Fold number: %i'%fold)
+		train_mask[user,movie] = False
 	
-		X_train, X_test = split_X_nfold_forloops(X,nfolds,fold)
+	for k in range(len(test_users)):
+		user, movie = test_users[k], test_movies[k]
+		test_mask[user,movie] = False
 
-		# Initializing from the standard normal dist
-		U = np.random.randn(len(all_users),num_factors)
-		M = np.random.randn(num_factors,len(all_items))
+	X_train = ma.array(np.copy(X),mask=train_mask)
+	X_test = ma.array(np.copy(X),mask=test_mask)
 
-		prev_SE = 10e8
-		for iterate in range(num_iter):
-			# later: remove double for loop
-			for i in range(X_train.shape[0]):
-				for j in range(X_train.shape[1]):
-					if not ma.is_masked(X_train[i,j]): # only predict if the value is not masked
-						# prediction 
-						xhat_ij = np.dot(U[i,:],M[:,j])
-						e_ij = X_train[i,j] - xhat_ij
-						for k in range(num_factors):
-							U[i,k] = U[i,k] + learn_rate * ( 2*e_ij * M[k,j] - regularization * U[i,k] )
-							M[k,j] = M[k,j] + learn_rate * ( 2*e_ij * U[i,k] - regularization * M[k,j] )
-
-			SE = 0
-			for i in range(X_test.shape[0]):
-				for j in range(X_test.shape[1]):
-					if not ma.is_masked(X_test[i,j]): # only predict if the value is not masked
-						SE += np.power(X_test[i,j] - np.dot(U[i,:],M[:,j]),2)
-			
-			print ('Iteration: %i, SE = %f'%(iterate,SE))
-			if SE > prev_SE:
-				print ('SE did not decrease, from %f to %f'%(prev_SE,SE))
-				print ('Thus stopping fold number %i \n'%fold)
-				break
-			prev_SE = SE
-
-# five_fold_CV_forloops()
+	# Return the (user,movie) combination splits and train/test masked arrays
+	return train_users, train_movies, test_users, test_movies, X_train, X_test
 
 def five_fold_CV():
 
@@ -162,50 +83,69 @@ def five_fold_CV():
 
 	X = create_X(ratings)
 
-	all_SE = []
+	# For saving results
+	all_U = []
+	all_M = []
+	all_RMSE_train = []
+	all_MAE_train = []
+	all_RMSE_test = []
+	all_MAE_test = []
 
 	nfolds = 5
 	for fold in range(nfolds):
 		print ('Fold number: %i'%fold)
 	
-		train_users,train_movies,test_users,test_movies = split_X_nfold(X,nfolds,fold)
+		(train_users,train_movies,test_users,test_movies,
+		X_train, X_test) = split_X_nfold(X,nfolds,fold)
 
 		# Initializing from the standard normal dist
 		U = np.random.randn(len(all_users),num_factors)
 		M = np.random.randn(num_factors,len(all_items))
 
-		prev_SE = 10e8
+		prev_RMSE = 10e8
 		for iterate in range(num_iter):
 			
 			# loop through the training (user,movie) combinations
-			for l in range(len(train_users)):
+			for l in range(len(train_users)): # this loop cannot be avoided
 				i, j = train_users[l], train_movies[l]
-				xhat_ij = np.dot(U[i,:],M[:,j])
-				e_ij = X[i,j] - xhat_ij
+				xhat_ij = np.dot(U[i,:],M[:,j]) # have to keep recalculating in loop
+				e_ij = X[i,j] - xhat_ij # because we keep updating U and M
 
-				for k in range(num_factors):
-					U[i,k] = U[i,k] + learn_rate * ( 2*e_ij * M[k,j] - regularization * U[i,k] )
-					M[k,j] = M[k,j] + learn_rate * ( 2*e_ij * U[i,k] - regularization * M[k,j] )
+				# update all 10 factors beloning to (i,j) of this training example
+				U[i,:] = U[i,:] + learn_rate * ( 2*e_ij * M[:,j] - regularization * U[i,:] )
+				M[:,j] = M[:,j] + learn_rate * ( 2*e_ij * U[i,:] - regularization * M[:,j] )
+				
+			# all predictions after the updates
+			predictions = np.dot(U,M)
 
-			SE = 0
-			# loop through the test (user,movie) combinations
-			for l in range(len(test_users)):
-				i, j = test_users[l], test_movies[l]
-				SE += np.power(X[i,j] - np.dot(U[i,:],M[:,j]),2)
+			# calculate RMSE on test set for the stopping condition
+			RMSE_test = np.sqrt(np.mean(np.power(X_test - predictions,2)))
 			
-			# Check if SE decreased
-			print ('Iteration: %i, SE = %f'%(iterate,SE))
-			if SE > prev_SE:
-				print ('SE did not decrease, from %f to %f'%(prev_SE,SE))
+			# Check if RMSE decreased
+			print ('Iteration: %i, test set RMSE = %f'%(iterate,RMSE_test))
+			if RMSE_test > prev_RMSE:
+				print ('RMSE did not decrease, from %f to %f'%(prev_RMSE,RMSE_test))
 				print ('Thus stopping fold number %i \n'%fold)
-				all_SE.append(SE)
-				break
-			prev_SE = SE
+				
+				# save results of this fold
+				all_RMSE_test.append(RMSE_test)
+				all_RMSE_train.append( np.sqrt(np.mean(np.power(X_train - predictions,2))) )
+				
+				all_MAE_test.append( np.mean(np.abs(X_test - predictions)) )
+				all_MAE_train.append( np.mean(np.abs(X_train - predictions)) )
+				
+				all_U.append(U)
+				all_M.append(M)
+				
+			prev_RMSE = RMSE_test
 
-	return U, M, np.asarray(SE)
+	return all_U, all_M, all_RMSE_train, all_RMSE_test, all_MAE_train, all_MAE_test
 
-U, M, SE = five_fold_CV()
+all_U, all_M, all_RMSE_train, all_RMSE_test, all_MAE_train, all_MAE_test = five_fold_CV()
 
-np.save('./U_array',U)
-np.save('./M_array',M)
-np.save('./SE',SE)
+np.save('./all_U',all_U)
+np.save('./all_M',all_M)
+np.save('./all_RMSE_train',all_RMSE_train)
+np.save('./all_RMSE_test',all_RMSE_test)
+np.save('./all_MAE_train',all_MAE_train)
+np.save('./all_MAE_test',all_MAE_test)
