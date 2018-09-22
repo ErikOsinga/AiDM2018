@@ -162,6 +162,8 @@ def five_fold_CV():
 
 	X = create_X(ratings)
 
+	all_SE = []
+
 	nfolds = 5
 	for fold in range(nfolds):
 		print ('Fold number: %i'%fold)
@@ -196,12 +198,14 @@ def five_fold_CV():
 			if SE > prev_SE:
 				print ('SE did not decrease, from %f to %f'%(prev_SE,SE))
 				print ('Thus stopping fold number %i \n'%fold)
+				all_SE.append(SE)
 				break
 			prev_SE = SE
 
-	return U, M
+	return U, M, np.asarray(SE)
 
-U, M = five_fold_CV()
+U, M, SE = five_fold_CV()
 
 np.save('./U_array',U)
 np.save('./M_array',M)
+np.save('./SE',SE)
