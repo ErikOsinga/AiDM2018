@@ -9,7 +9,7 @@ all_users = np.unique(ratings[:,0])
 all_items = np.unique(ratings[:,1])	 
 np.random.seed(23)
 
-def create_X(ratings):
+def create_X(ratings,normalization):
 	'''
 	Create a masked array X that contains in position (i,j) 
 	the rating that a user i would give a movie j
@@ -23,9 +23,13 @@ def create_X(ratings):
 	# Can use different normalization methods (see paper)
 	# Here we choose to subtract the mean rating of every user
 	# We are not treating unrated movies as 0, because using a mask.
-	print ("Normalization tbd")
-	# user_ratings_mean = np.mean(X, axis = 1)
-	# X = X - user_ratings_mean.reshape(-1, 1)
+	if normalization:
+		print ("Normalization on")
+		user_ratings_mean = np.mean(X, axis = 1)
+		X = X - user_ratings_mean.reshape(-1, 1)
+
+	else:
+		print ("Normalization off")
 
 	return X
 
@@ -213,14 +217,23 @@ def show_learning_curve():
 
 	return RMSE_train_it, RMSE_test_it, MAE_train_it, MAE_test_it
 
-
+normalization = False
 all_U, all_M, all_RMSE_train, all_RMSE_test, all_MAE_train, all_MAE_test = five_fold_CV()
-np.save('./all_U',all_U)
-np.save('./all_M',all_M)
-np.save('./all_RMSE_train',all_RMSE_train)
-np.save('./all_RMSE_test',all_RMSE_test)
-np.save('./all_MAE_train',all_MAE_train)
-np.save('./all_MAE_test',all_MAE_test)
+if normalization:
+	np.save('./all_U_normalization',all_U)
+	np.save('./all_M_normalization',all_M)
+	np.save('./all_RMSE_train_normalization',all_RMSE_train)
+	np.save('./all_RMSE_test_normalization',all_RMSE_test)
+	np.save('./all_MAE_train_normalization',all_MAE_train)
+	np.save('./all_MAE_test_normalization',all_MAE_test)
+
+else:
+	np.save('./all_U',all_U)
+	np.save('./all_M',all_M)
+	np.save('./all_RMSE_train',all_RMSE_train)
+	np.save('./all_RMSE_test',all_RMSE_test)
+	np.save('./all_MAE_train',all_MAE_train)
+	np.save('./all_MAE_test',all_MAE_test)
 
 
 

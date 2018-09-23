@@ -35,7 +35,10 @@ def user_mean(ratings,user):
 	return prediction
 
 def five_fold_CV(ratings):
-	'''Test the linear regression model with 5-fold CV '''
+	'''
+	Test the models with 5 fold cross validation
+	'''
+	
 	np.random.seed(17) # For reproducibility
 	
 	# split data into 5 train and test folds
