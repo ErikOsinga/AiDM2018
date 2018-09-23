@@ -9,7 +9,6 @@ all_users = np.unique(ratings[:,0])
 all_items = np.unique(ratings[:,1])	 
 np.random.seed(23)
 
-
 def create_X(ratings):
 	'''
 	Create a masked array X that contains in position (i,j) 
@@ -123,9 +122,12 @@ def five_fold_CV():
 			
 			# Check if RMSE decreased
 			print ('Iteration: %i, test set RMSE = %f'%(iterate,RMSE_test))
-			if RMSE_test > prev_RMSE:
-				print ('RMSE did not decrease, from %f to %f'%(prev_RMSE,RMSE_test))
-				print ('Thus stopping fold number %i \n'%fold)
+			if RMSE_test > prev_RMSE or iterate == (num_iter - 1):
+				if iterate == (num_iter - 1):
+					print ('Last iteration done, stopping..')
+				else:
+					print ('RMSE did not decrease, from %f to %f'%(prev_RMSE,RMSE_test))
+					print ('Thus stopping fold number %i \n'%fold)
 				
 				# save results of this fold
 				all_RMSE_test.append(RMSE_test)
@@ -136,16 +138,95 @@ def five_fold_CV():
 				
 				all_U.append(U)
 				all_M.append(M)
+
+				break
 				
 			prev_RMSE = RMSE_test
 
 	return all_U, all_M, all_RMSE_train, all_RMSE_test, all_MAE_train, all_MAE_test
 
-all_U, all_M, all_RMSE_train, all_RMSE_test, all_MAE_train, all_MAE_test = five_fold_CV()
+def show_learning_curve():
+	''' 
+	Only runs 1 fold of the above algorithm to save the
+	MAE and RMSE at every iteration to show the learning curve.
+	'''
 
+	# Proposed parameters
+	num_factors = 10 
+	num_iter = 75
+	regularization = 0.05
+	learn_rate = 0.005
+
+	X = create_X(ratings)
+
+	# For saving results per iteration
+	RMSE_train_it = []
+	MAE_train_it = []
+	RMSE_test_it = []
+	MAE_test_it = []
+
+	nfolds = 5
+	for fold in range(1):
+		print ('Only doing 1 fold, calculating error per iteration...')
+		print ('Fold number: %i'%fold)
+	
+		(train_users,train_movies,test_users,test_movies,
+		X_train, X_test) = split_X_nfold(X,nfolds,fold)
+
+		# Initializing from the standard normal dist
+		U = np.random.randn(len(all_users),num_factors)
+		M = np.random.randn(num_factors,len(all_items))
+
+		prev_RMSE = 10e8
+		for iterate in range(num_iter):
+			
+			# loop through the training (user,movie) combinations
+			for l in range(len(train_users)): # this loop cannot be avoided
+				i, j = train_users[l], train_movies[l]
+				xhat_ij = np.dot(U[i,:],M[:,j]) # have to keep recalculating in loop
+				e_ij = X[i,j] - xhat_ij # because we keep updating U and M
+
+				# update all 10 factors beloning to (i,j) of this training example
+				U[i,:] = U[i,:] + learn_rate * ( 2*e_ij * M[:,j] - regularization * U[i,:] )
+				M[:,j] = M[:,j] + learn_rate * ( 2*e_ij * U[i,:] - regularization * M[:,j] )
+				
+			# all predictions after the updates
+			predictions = np.dot(U,M)
+
+			# calculate RMSE on test set for the stopping condition
+			RMSE_test = np.sqrt(np.mean(np.power(X_test - predictions,2)))
+			
+			# save results of this fold
+			RMSE_test_it.append(RMSE_test)
+			RMSE_train_it.append( np.sqrt(np.mean(np.power(X_train - predictions,2))) )
+			
+			MAE_test_it.append( np.mean(np.abs(X_test - predictions)) )
+			MAE_train_it.append( np.mean(np.abs(X_train - predictions)) )
+		
+			# Check if RMSE decreased
+			print ('Iteration: %i, test set RMSE = %f'%(iterate,RMSE_test))
+			if RMSE_test > prev_RMSE:
+				print ('RMSE did not decrease, from %f to %f'%(prev_RMSE,RMSE_test))
+				print ('Thus stopping fold number %i \n'%fold)				
+				break
+			prev_RMSE = RMSE_test
+
+	return RMSE_train_it, RMSE_test_it, MAE_train_it, MAE_test_it
+
+
+all_U, all_M, all_RMSE_train, all_RMSE_test, all_MAE_train, all_MAE_test = five_fold_CV()
 np.save('./all_U',all_U)
 np.save('./all_M',all_M)
 np.save('./all_RMSE_train',all_RMSE_train)
 np.save('./all_RMSE_test',all_RMSE_test)
 np.save('./all_MAE_train',all_MAE_train)
 np.save('./all_MAE_test',all_MAE_test)
+
+
+
+# # For plotting a learning curve
+# RMSE_train_it, RMSE_test_it, MAE_train_it, MAE_test_it = show_learning_curve()
+# np.save('./RMSE_test_it',RMSE_test_it)
+# np.save('./RMSE_train_it',RMSE_train_it)
+# np.save('./MAE_train_it',MAE_train_it)
+# np.save('./MAE_test_it',MAE_test_it)
