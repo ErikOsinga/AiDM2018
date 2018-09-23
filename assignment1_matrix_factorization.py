@@ -9,7 +9,7 @@ all_users = np.unique(ratings[:,0])
 all_items = np.unique(ratings[:,1])	 
 np.random.seed(23)
 
-def create_X(ratings,normalization):
+def create_X(ratings):
 	'''
 	Create a masked array X that contains in position (i,j) 
 	the rating that a user i would give a movie j
