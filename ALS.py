@@ -23,9 +23,13 @@ def create_X(ratings):
 	# Can use different normalization methods (see paper)
 	# Here we choose to subtract the mean rating of every user
 	# We are not treating unrated movies as 0, because using a mask.
-	print ("Normalization tbd")
-	# user_ratings_mean = np.mean(X, axis = 1)
-	# X = X - user_ratings_mean.reshape(-1, 1)
+	if normalization:
+		print ("Normalization on")
+		user_ratings_mean = np.mean(X, axis = 1)
+		X = X - user_ratings_mean.reshape(-1, 1)
+
+	else:
+		print ("Normalization off")
 
 	return X
 
@@ -192,10 +196,20 @@ def ALS():
 
 	return all_all_RMSE_train, all_all_RMSE_test, all_all_MAE_train, all_all_MAE_test
 
+normalization = True
+
 all_RMSE_train, all_RMSE_test, all_MAE_train, all_MAE_test = ALS()
+
 print ('Saving the results..')
-np.save('./all_RMSE_ALS_train',all_RMSE_train)
-np.save('./all_RMSE_ALS_test',all_RMSE_test)
-np.save('./all_MAE_ALS_train',all_MAE_train)
-np.save('./all_MAE_ALS_test',all_MAE_test)
+if normalization:
+	np.save('./all_RMSE_ALS_train_normalization',all_RMSE_train)
+	np.save('./all_RMSE_ALS_test_normalization',all_RMSE_test)
+	np.save('./all_MAE_ALS_train_normalization',all_MAE_train)
+	np.save('./all_MAE_ALS_test_normalization',all_MAE_test)
+
+else:
+	np.save('./all_RMSE_ALS_train',all_RMSE_train)
+	np.save('./all_RMSE_ALS_test',all_RMSE_test)
+	np.save('./all_MAE_ALS_train',all_MAE_train)
+	np.save('./all_MAE_ALS_test',all_MAE_test)
 

@@ -37,16 +37,26 @@ def plot_error_matrix_factorization():
 	plt.ylim(0.5,2.0)
 	plt.show()
 
-def make_table_matrix_factorization():
-	F = open('./matrix_factorization.csv','w')
+def make_table_matrix_factorization(normalization=False):
+	if not normalization:
+		F = open('./matrix_factorization.csv','w')
+		all_U = np.load('./all_U.npy') # shape (5, 6040, 10)
+		all_M = np.load('./all_M.npy') # shape (5, 10, 3706)
+		all_RMSE_train = np.load('./all_RMSE_train.npy')
+		all_RMSE_test = np.load('./all_RMSE_test.npy')
+		all_MAE_train = np.load('./all_MAE_train.npy')
+		all_MAE_test = np.load('./all_MAE_test.npy')
 
-	all_U = np.load('./all_U.npy') # shape (5, 6040, 10)
-	all_M = np.load('./all_M.npy') # shape (5, 10, 3706)
-	all_RMSE_train = np.load('./all_RMSE_train.npy')
-	all_RMSE_test = np.load('./all_RMSE_test.npy')
-	all_MAE_train = np.load('./all_MAE_train.npy')
-	all_MAE_test = np.load('./all_MAE_test.npy')
+	else:
+		F = open('./matrix_factorization_normalization.csv','w')
+		all_U = np.load('./all_U_normalization.npy') # shape (5, 6040, 10)
+		all_M = np.load('./all_M_normalization.npy') # shape (5, 10, 3706)
+		all_RMSE_train = np.load('./all_RMSE_train_normalization.npy')
+		all_RMSE_test = np.load('./all_RMSE_test_normalization.npy')
+		all_MAE_train = np.load('./all_MAE_train_normalization.npy')
+		all_MAE_test = np.load('./all_MAE_test_normalization.npy')
 
+	# old format
 	# F.write(',\hfil Train set,,\hfil Test set,\n')
 	# F.write(',mean,std,mean,std\n')
 	# F.write('RMSE,%.2f,%.4f,%.2f,%.4f \n'%(np.mean(all_RMSE_train),np.std(all_RMSE_train),np.mean(all_RMSE_test),np.std(all_RMSE_test)))
@@ -92,20 +102,31 @@ def plot_error_ALS():
 	plt.savefig('./MAE_ALS.pdf')
 	plt.show()
 
-def make_table_ALS():
- 	F = open('./ALS.csv','w')
+def make_table_ALS(normalization=False):
+ 	if not normalization:
+	 	F = open('./ALS.csv','w')
 
- 	# shape (5,75 (or less if early stop) )
-	all_RMSE_ALS_train = np.load('./all_RMSE_ALS_train.npy')
-	all_RMSE_ALS_test = np.load('./all_RMSE_ALS_test.npy')
+	 	# shape (5,75 (or less if early stop) )
+		all_RMSE_ALS_train = np.load('./all_RMSE_ALS_train.npy')
+		all_RMSE_ALS_test = np.load('./all_RMSE_ALS_test.npy')
 
-	all_MAE_ALS_train = np.load('./all_MAE_ALS_train.npy')
-	all_MAE_ALS_test = np.load('./all_MAE_ALS_test.npy')
+		all_MAE_ALS_train = np.load('./all_MAE_ALS_train.npy')
+		all_MAE_ALS_test = np.load('./all_MAE_ALS_test.npy')
+	else:
+		F = open('./ALS_normalization.csv','w')
+
+	 	# shape (5,75 (or less if early stop) )
+		all_RMSE_ALS_train = np.load('./all_RMSE_ALS_train_normalization.npy')
+		all_RMSE_ALS_test = np.load('./all_RMSE_ALS_test_normalization.npy')
+
+		all_MAE_ALS_train = np.load('./all_MAE_ALS_train_normalization.npy')
+		all_MAE_ALS_test = np.load('./all_MAE_ALS_test_normalization.npy')
 
 	final_RMSE_ALS_train = []
 	final_RMSE_ALS_test = []
 	final_MAE_ALS_train = []
 	final_MAE_ALS_test = []
+
 	for fold in range(5):
 		final_RMSE_ALS_train.append(all_RMSE_ALS_train[fold][-1])
 		final_RMSE_ALS_test.append(all_RMSE_ALS_test[fold][-1])
@@ -124,6 +145,6 @@ def make_table_ALS():
 
 
 # plot_error_matrix_factorization()
-# make_table_matrix_factorization()
+make_table_matrix_factorization(normalization=True)
 # plot_error_ALS()
-make_table_ALS()
+make_table_ALS(normalization=True)

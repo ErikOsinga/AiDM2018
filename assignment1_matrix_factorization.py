@@ -217,7 +217,7 @@ def show_learning_curve():
 
 	return RMSE_train_it, RMSE_test_it, MAE_train_it, MAE_test_it
 
-normalization = False
+normalization = True
 all_U, all_M, all_RMSE_train, all_RMSE_test, all_MAE_train, all_MAE_test = five_fold_CV()
 if normalization:
 	np.save('./all_U_normalization',all_U)
