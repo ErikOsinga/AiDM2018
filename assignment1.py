@@ -71,6 +71,10 @@ def five_fold_CV(ratings):
 	err_train_GM = np.zeros(nfolds)
 	err_train_GM_MAE = np.zeros(nfolds)
 	
+	alpha = np.zeros(nfolds)
+	beta = np.zeros(nfolds)
+	gamma = np.zeros(nfolds)
+						
 	seqs=[x%nfolds for x in range(len(ratings))]
 	np.random.shuffle(seqs)
 
@@ -150,9 +154,9 @@ def five_fold_CV(ratings):
 		global_mean_error()
 
 		# Linear Regression
-		alpha, beta, gamma = train_linear_combination(train)
-		LR_predict_train = alpha * train_prediction_UM[:,1] + beta * train_prediction_IM[:,1] + gamma
-		LR_predict_test = alpha * test_prediction_UM[:,1] + beta * test_prediction_IM[:,1] + gamma
+		alpha[fold], beta[fold], gamma[fold] = train_linear_combination(train)
+		LR_predict_train = alpha[fold] * train_prediction_UM[:,1] + beta[fold] * train_prediction_IM[:,1] + gamma[fold]
+		LR_predict_test = alpha[fold] * test_prediction_UM[:,1] + beta[fold] * test_prediction_IM[:,1] + gamma[fold]
 
 		err_train_LR[fold] = np.sqrt(np.mean((train[:,2] - LR_predict_train)**2))
 		err_test_LR[fold] = np.sqrt(np.mean((test[:,2] - LR_predict_test )**2))
@@ -163,7 +167,7 @@ def five_fold_CV(ratings):
 	return (err_train_LR, err_train_LR_MAE, err_test_LR, err_test_LR_MAE, err_test_UM, err_test_UM_MAE,
 			err_test_IM, err_test_IM_MAE, err_test_GM, err_test_GM_MAE,
 			err_train_UM, err_train_UM_MAE, err_train_IM, err_train_IM_MAE,
-			err_train_GM, err_train_GM_MAE)
+			err_train_GM, err_train_GM_MAE, alpha, beta, gamma)
 
 	
 #alpha,beta,gamma = train_linear_combination(ratings)
@@ -175,7 +179,7 @@ def five_fold_CV(ratings):
 (err_train_LR, err_train_LR_MAE, err_test_LR, err_test_LR_MAE, err_test_UM, err_test_UM_MAE,
 err_test_IM, err_test_IM_MAE, err_test_GM, err_test_GM_MAE,
 err_train_UM, err_train_UM_MAE, err_train_IM, err_train_IM_MAE,
-err_train_GM, err_train_GM_MAE) = five_fold_CV(ratings)
+err_train_GM, err_train_GM_MAE, alpha, beta, gamma) = five_fold_CV(ratings)
 
 print ('Test set results:')
 print ('User mean RMS: %s'%np.mean(err_test_UM))
@@ -207,6 +211,11 @@ print ('MAE: %s'%np.mean(err_train_LR_MAE))
 print ('Test set:')
 print ('RMS: %s'%np.mean(err_test_LR))
 print ('MAE: %s'%np.mean(err_test_LR_MAE))
+
+print('Linear Regression paramaters:')
+print('alpha = {}'.format(np.mean(alpha)))
+print('beta = {}'.format(np.mean(beta)))
+print('gamma = {}'.format(np.mean(gamma)))
 
 
 
