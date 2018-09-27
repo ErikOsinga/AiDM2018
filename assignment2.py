@@ -67,9 +67,9 @@ def estimate_cardinality_FM_split(values, split_number):
      for value in list(value_split[j]): 
         h = value
         max_zeroes_split = max(max_zeroes_split, trailing_zeroes(h))
-     max_zeroes[j] = max_zeroes_split   
+     max_zeroes[j] = max_zeroes_split  
+  print(np.max(max_zeroes), np.mean(max_zeroes))
   return 2 ** np.mean(max_zeroes)
-
 
 
 

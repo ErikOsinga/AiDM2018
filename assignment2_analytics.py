@@ -48,26 +48,32 @@ import assignment2 as a2
 
 def test_FM():
     '''
-    Test the FM_split function by running it num_iter times and taking the median of the outcome
-    Splits = the number of groups the hashfunction is partitioned in
+    Test the FM function by running it num_iter times and taking the median of the outcome
+    hash_groups = the number of groups the hashfunction is partitioned in (small multiple of log2(size))
     We generate a random number sequence with numbers of lengt 32bits and different sequence lengths proportional to the size_list
     The random sequence is probed for unique elements and the first "size" unique elements are fed into the cardinality estimator
     '''
-    size_list = [10**3, 10**4, 10**5, 10**6]
+    size_list = [10**3]
     e = np.zeros(len(size_list))
-    num_iter = 10
-    splits = 10
+    num_iter = 30
     for k in range(len(size_list)):
         print(k)
         size = size_list[k]
         e_t = []
+        hash_groups = int(size/(2*np.log2(size)))
+        while (size/hash_groups).is_integer() == False:
+           hash_groups -= 1
         for j in range(num_iter):
-            s = [random.randint(0, 2**32-1) for i in range(int(1.2*size))]
-            u = np.unique(s)
-            ss = u[:size]
-            e_t.append(a2.estimate_cardinality_FM_split(ss,splits))
-        e[k] = np.median(e_t)    
+           e_tt=[]
+           for r in range(hash_groups):      
+              s = [random.randint(0, 2**32-1) for i in range(int(1.2*size))]
+              u = np.unique(s)
+              ss = u[:size]
+              e_tt.append(a2.estimate_cardinality_FM(ss))
+           e_t.append(np.median(e_tt)) 
+        e[k] = np.mean(e_t)    
     return e
 estimate = test_FM()
+print(([10**3]-estimate)/[10**3])
 print(estimate)
 
