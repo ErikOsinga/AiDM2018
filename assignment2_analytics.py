@@ -53,9 +53,9 @@ def test_FM():
     We generate a random number sequence with numbers of lengt 32bits and different sequence lengths proportional to the size_list
     The random sequence is probed for unique elements and the first "size" unique elements are fed into the cardinality estimator
     '''
-    size_list = [10**3]
+    size_list = [10**3, 10**4, 10**5, 10**6, 10**7]
     e = np.zeros(len(size_list))
-    num_iter = 30
+    num_iter = 5
     for k in range(len(size_list)):
         print(k)
         size = size_list[k]
@@ -74,6 +74,6 @@ def test_FM():
         e[k] = np.mean(e_t)    
     return e
 estimate = test_FM()
-print(([10**3]-estimate)/[10**3])
+print(([10**3, 10**4, 10**5, 10**6, 10**7]-estimate)/[10**3, 10**4, 10**5, 10**6, 10**7])
 print(estimate)
 
