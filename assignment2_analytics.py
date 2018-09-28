@@ -1,5 +1,6 @@
 import numpy as np
 import random
+import sys
 import assignment2 as a2
 
 #def test_buckets():
@@ -46,34 +47,37 @@ import assignment2 as a2
 #
 #    np.savetxt("results_accuracy.csv", results)
 
-def test_FM():
+def test_FM(num_iter):
     '''
     Test the FM function by running it num_iter times and taking the median of the outcome
     hash_groups = the number of groups the hashfunction is partitioned in (small multiple of log2(size))
     We generate a random number sequence with numbers of lengt 32bits and different sequence lengths proportional to the size_list
     The random sequence is probed for unique elements and the first "size" unique elements are fed into the cardinality estimator
     '''
-    size_list = [10**3, 10**4, 10**5, 10**6, 10**7]
+    size_list = [10**3, 10**4, 10**5, 10**6]
     e = np.zeros(len(size_list))
-    num_iter = 5
     for k in range(len(size_list)):
         print(k)
         size = size_list[k]
         e_t = []
-        hash_groups = int(size/(2*np.log2(size)))
-        while (size/hash_groups).is_integer() == False:
-           hash_groups -= 1
+        hash_groups = int(2*np.log2(size))
         for j in range(num_iter):
            e_tt=[]
-           for r in range(hash_groups):      
+           for r in range(hash_groups):  
+              #print progress
+              sys.stdout.write('\r')
+              sys.stdout.write("[%-20s] %d%%" % ('='*int(r/hash_groups*20), r/hash_groups*100))
+              sys.stdout.flush()
+              
               s = [random.randint(0, 2**32-1) for i in range(int(1.2*size))]
               u = np.unique(s)
               ss = u[:size]
               e_tt.append(a2.estimate_cardinality_FM(ss))
+           sys.stdout.write('\n')
            e_t.append(np.median(e_tt)) 
         e[k] = np.mean(e_t)    
     return e
-estimate = test_FM()
-print(([10**3, 10**4, 10**5, 10**6, 10**7]-estimate)/[10**3, 10**4, 10**5, 10**6, 10**7])
-print(estimate)
+ 
+estimate = test_FM(5)
+print(([10**3, 10**4, 10**5, 10**6]-estimate)/[10**3, 10**4, 10**5, 10**6])
 
