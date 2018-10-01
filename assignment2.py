@@ -44,12 +44,11 @@ def estimate_cardinality_loglog(values, k):
   """
   num_buckets = 2 ** k
   max_zeroes = [0] * num_buckets
-  for value in values: 
-    h = value
+  for h in values: 
     bucket = h & (num_buckets - 1) # Mask out the k least significant bits as bucket ID
     bucket_hash = h >> k
     max_zeroes[bucket] = max(max_zeroes[bucket], trailing_zeroes(bucket_hash))
-  return 2 ** (float(sum(max_zeroes)) / num_buckets) * num_buckets * 0.79402
+  return 2 ** ( np.mean(max_zeroes)) * num_buckets * 0.79402
 
 def estimate_cardinality_FM(values):
   """Estimates the number of unique elements in the input set values using the FM algortihm
