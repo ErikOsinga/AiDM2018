@@ -47,37 +47,48 @@ import assignment2 as a2
 #
 #    np.savetxt("results_accuracy.csv", results)
 
-def test_FM(num_iter):
+def generate_R_distinct_values(R):
+  """
+  Generates R distinct values between 0 and 2**32 - 1
+  !! Make sure to not set a seed anywhere, else they will be the same every time
+  which kind of destroys the purpose of having 'different' hash functions
+  """
+  distinct = np.random.randint(0,2**32-1,int(R*1.2))
+  distinct = np.unique(distinct)
+  distinct = distinct[:R]
+  assert len(distinct) == R
+
+  return distinct
+
+def test_FM(num_iter,size_list):
     '''
     Test the FM function by running it num_iter times and taking the median of the outcome
     hash_groups = the number of groups the hashfunction is partitioned in (small multiple of log2(size))
     We generate a random number sequence with numbers of lengt 32bits and different sequence lengths proportional to the size_list
     The random sequence is probed for unique elements and the first "size" unique elements are fed into the cardinality estimator
     '''
-    size_list = [10**3, 10**4, 10**5, 10**6]
     e = np.zeros(len(size_list))
     for k in range(len(size_list)):
         print(k)
         size = size_list[k]
         e_t = []
         hash_groups = int(2*np.log2(size))
-        for j in range(num_iter):
-           e_tt=[]
-           for r in range(hash_groups):  
+        for j in range(num_iter): # run the algorithm num_iter times
+           e_tt = []
+           for r in range(hash_groups): # use hash_groups different hash functions
               #print progress
               sys.stdout.write('\r')
               sys.stdout.write("[%-20s] %d%%" % ('='*int(r/hash_groups*20), r/hash_groups*100))
               sys.stdout.flush()
               
-              s = [random.randint(0, 2**32-1) for i in range(int(1.2*size))]
-              u = np.unique(s)
-              ss = u[:size]
+              ss = generate_R_distinct_values(size)
               e_tt.append(a2.estimate_cardinality_FM(ss))
            sys.stdout.write('\n')
            e_t.append(np.median(e_tt)) 
         e[k] = np.mean(e_t)    
     return e
  
-estimate = test_FM(5)
-print(([10**3, 10**4, 10**5, 10**6]-estimate)/[10**3, 10**4, 10**5, 10**6])
+size_list = [10**3, 10**4] #,10**5, 10**6]
+estimate = test_FM(num_iter=5,size_list=size_list)
+print((size_list-estimate)/size_list)
 
