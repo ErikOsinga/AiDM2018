@@ -21,6 +21,19 @@ def trailing_zeroes(num):
     p += 1
   return p
 
+def generate_R_distinct_values(R):
+    """
+    Generates R distinct values between 0 and 2**32 - 1
+    !! Make sure to not set a seed anywhere, else they will be the same every time
+    which kind of destroys the purpose of having 'different' hash functions
+    """
+    distinct = np.random.randint(0,2**32-1,int(R*1.2))
+    distinct = np.unique(distinct)
+    distinct = distinct[:R]
+    assert len(distinct) == R
+
+    return distinct
+
 #@timing
 def estimate_cardinality_loglog(values, k):
   """Estimates the number of unique elements in the input set values using the LogLog algorithm
@@ -38,10 +51,8 @@ def estimate_cardinality_loglog(values, k):
     max_zeroes[bucket] = max(max_zeroes[bucket], trailing_zeroes(bucket_hash))
   return 2 ** (float(sum(max_zeroes)) / num_buckets) * num_buckets * 0.79402
 
-
-
 def estimate_cardinality_FM(values):
-  """Estimates the number of unique elements in the input set values using the LogLog algortihm
+  """Estimates the number of unique elements in the input set values using the FM algortihm
 
   Arguments:
     values: An iterator of hashable elements to estimate the cardinality of.
@@ -51,27 +62,6 @@ def estimate_cardinality_FM(values):
     h = value
     max_zeroes = max(max_zeroes, trailing_zeroes(h))
   return 2 ** max_zeroes
-
-
-def estimate_cardinality_FM_split(values, split_number):
-  """Estimates the number of unique elements in the input set values using the LogLog algortihm
-
-  Arguments:
-    values: An iterator of hashable elements to estimate the cardinality of.
-  """
-  max_zeroes = np.zeros(split_number)
-  value_split = np.zeros(split_number)
-  value_split = np.split(np.array(values), split_number)
-  for j in range(split_number):
-     max_zeroes_split = 0
-     for value in list(value_split[j]): 
-        h = value
-        max_zeroes_split = max(max_zeroes_split, trailing_zeroes(h))
-     max_zeroes[j] = max_zeroes_split  
-  print(np.max(max_zeroes), np.mean(max_zeroes))
-  return 2 ** np.mean(max_zeroes)
-
-
 
 
 
