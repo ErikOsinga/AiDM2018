@@ -7,9 +7,9 @@ def timing(f):
         time1 = time.time()
         ret = f(*args)
         time2 = time.time()
-        print('{:s} function took {:.3f} s'.format(f.__name__, (time2-time1)))
+        #print('{:s} function took {:.3f} s'.format(f.__name__, (time2-time1)))
 
-        return ret
+        return ret, time2-time1
     return wrap
 
 def trailing_zeroes(num):
