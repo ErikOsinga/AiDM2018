@@ -1,6 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
-
+import assignment2_analytics as a2an
+import assignment2 as a2
 
 def plot_params(ax,xlabel,ylabel,title=''):
 	ax.get_xaxis().tick_bottom()    
@@ -50,15 +51,16 @@ accuracy_plots()
 ''' 
 
 def loop_many_variables_plot_FM():
-   results = np.load('./results_assignment2_test6.npy')
-   num_groupss = np.load('./num_groupss_test6.npy')
-   small_ints = np.load('./small_ints_test6.npy')
-   results_2 = np.load('./results_assignment2_test5.npy')
-   num_groupss_2 = np.load('./num_groupss_test5.npy')
-   small_ints_2 = np.load('./small_ints_test5.npy')
+   results = np.load('./results_assignment2.npy')
+   num_groupss = np.load('./num_groupss.npy')
+   small_ints = np.load('./small_ints.npy')
+   print (results.shape)
+   # results_2 = np.load('./results_assignment2_test5.npy')
+   # num_groupss_2 = np.load('./num_groupss_test5.npy')
+   # small_ints_2 = np.load('./small_ints_test5.npy')
 #   plt.imshow(results[0,:,:,0],origin='lower')
 
-   plt.pcolormesh(results[0,:,:,0] ,cmap='Reds')
+   plt.pcolormesh(results[3,:,:,0] ,cmap='Reds')
    # set x axis correctly showing num groups
    ticks = np.arange(0.5,len(num_groupss),1)
    labels = num_groupss
@@ -69,10 +71,10 @@ def loop_many_variables_plot_FM():
    ticks = np.arange(0.5,len(small_ints),1)
    labels = small_ints
    plt.yticks(ticks, labels)
-   plt.ylabel('Small int')
+   plt.ylabel('Small multiple')
    
    plt.colorbar()
-   plt.savefig('FM_2D_plot_size_10^3_test6')
+   plt.savefig('FM_2D_plot_size_10^6')
    plt.show()
    
 def loop_many_variables_plot_loglog():
@@ -80,17 +82,51 @@ def loop_many_variables_plot_loglog():
     buckets = np.load('./buckets.npy')
     fig, ax = plt.subplots()
     for i in range(len(results[:,0][:,0])):
-        ax.errorbar(range(len(results[i,:][:,0])), results[i,:][:,0], yerr = results[i,:][:,1], fmt='o', capsize=5, label='$\mathrm{10^%s}$'%(i+3))
-    for y in np.geomspace(0.001, 10**5, num=9):    
-        ax.plot(range(len(buckets)), [y] * len(range(len(buckets))), "--", lw=0.5, color="black", alpha=0.3)   	
+        ax.errorbar(range(len(results[i,:][:,0])), results[i,:][:,0], yerr = results[i,:][:,1], fmt='o-', capsize=5, label='$\mathrm{10^%s}$'%(i+3))
+
+    # for y in np.geomspace(0.001, 10**5, num=9):    
+    #     ax.plot(range(len(buckets)), [y] * len(range(len(buckets))), "--", lw=0.5, color="black", alpha=0.3)   	
 
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
     plot_params(ax,r'$\mathrm{\log_2}$( Number of buckets )','Relative error(RAE)','')
     plt.xticks(range(0, len(results[i,:][:,0]), 2), range(np.min(buckets),np.max(buckets),2))
-    plt.yscale('log')
-    plt.savefig('logscale_buckets')
+    # plt.yscale('log')
+    plt.xlim(-1,7)
+    plt.ylim(-1.5,3)
+    # plt.savefig('logscale_buckets')
+    plt.savefig('buckets_size_10_3456_50it')
     plt.show()
    
-#loop_many_variables_plot_loglog()  
-loop_many_variables_plot_FM()
+loop_many_variables_plot_loglog()  
+# loop_many_variables_plot_FM()
+
+def make_histograms():
+  # loop 100 times for 10**3 for loglog and FM
+  FM_results = []
+  num_groups = 8
+  size = 10**3
+  small_int = 4
+  for i in range(100):
+    result = (a2an.test_FM(num_groups,size,small_int))
+    FM_results.append(result[0])
+
+  plt.hist(FM_results)
+  ax = plt.gca()
+  plot_params(ax,'RAE','Counts','')
+  plt.savefig('hist_RAE_size_10_3_loopswrong.png')
+  plt.show()
+
+  loglog_results = []
+  for i in range(100):
+    values = a2.generate_R_distinct_values(10**3)
+    loglog_results.append((size - a2.estimate_cardinality_loglog(values,k=5))/size)
+
+  plt.hist(loglog_results)
+  ax = plt.gca()
+  plot_params(ax,'RAE','Counts','')
+  plt.savefig('hist_RAE_size_10_3_loglog.png')
+  plt.show()
+
+# make_histograms()
+

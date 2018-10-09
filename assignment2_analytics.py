@@ -58,11 +58,11 @@ def test_FM(num_groups,size,small_int):
     '''
     e_t = [] # mean for every bucket
     hash_groups = int(small_int*np.log2(size))
-#    for j in range(num_groups): # run the algorithm num_iter times (create groups)
-#        e_tt = [] # cardinality for every hash func
-#        for r in range(hash_groups): # use hash_groups different hash functions
+    # for j in range(num_groups): # run the algorithm num_iter times (create groups)
+        # e_tt = [] # cardinality for every hash func
+        # for r in range(hash_groups): # use hash_groups different hash functions
     
-    
+    # APPARENTLY THIS WORKS BETTER ?
     for j in range(hash_groups): # run the algorithm num_iter times (create groups)
         e_tt = [] # cardinality for every hash func
         for r in range(num_groups): # use hash_groups different hash functions
@@ -79,8 +79,8 @@ def test_FM(num_groups,size,small_int):
     return RAE
     
 def loop_many_variables_FM(size_list):
-    small_ints = [2,3,4,5,6,7,8]
-    num_groupss = [5,15,25,35,45,55,65]
+    small_ints = [2,4,8]
+    num_groupss = [5,15,25,35]
     # (size_list,small_int,num_groupss) : tuple (RAE,time)
     results = np.empty((len(size_list),len(small_ints),len(num_groupss)),dtype=(float,2))  
     
@@ -99,10 +99,10 @@ def loop_many_variables_FM(size_list):
                 # save the result for this size,small_int,num_group combination
                 results[k,i,j] = (np.median(tmp_RAE),np.mean(tmp_time))
                     
-    np.save('./results_assignment2_test6.npy',results)
-    np.save('./small_ints_test6.npy',small_ints)
-    np.save('./num_groupss_test6.npy',num_groupss)
-    np.save('./size_list_test6.npy',size_list)
+    np.save('./results_assignment2_test7.npy',results)
+    np.save('./small_ints_test7.npy',small_ints)
+    np.save('./num_groupss_test7.npy',num_groupss)
+    np.save('./size_list_test7.npy',size_list)
  
 
 
@@ -124,9 +124,10 @@ def loop_many_variables_loglog(size_list, buckets, num_iter):
     np.save('./buckets.npy', buckets)
     
 
-size_list = [10**3]#, 10**4, 10**5, 10**6]
+if __name__ == '__main__':
+    size_list = [10**3]#, 10**4, 10**5]#, 10**6]
 
-#loop_many_variables_loglog(size_list, [2,3,4,5,6,7,8,9,10,11,12,13,14,16,17,18,19,20,21,22,23], 20)
-loop_many_variables_FM(size_list)               
+    # loop_many_variables_loglog(size_list, [2,3,4,5,6,7,8,9,10,11,12,13,14,16,17,18,19,20,21,22,23], 20)
+    loop_many_variables_FM(size_list)               
 
 
