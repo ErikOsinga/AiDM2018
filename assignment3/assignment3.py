@@ -34,6 +34,15 @@ def find_signatures2(M, X, cur_n):
             M[l,cur_n] = k
       k += 1
 
+def find_signatures3(M, X, cur_n): 
+	# we expect the first 1 to occur with very high certainty in the first 
+	# 1000 columns, because every user has rated atleast 
+	possible_signature = np.asarray(X[:,:1000].argmax(axis=1))
+	# find the small subset of users for which this (possibly) didnt work
+	mask = possible_signature == 0
+	# calculate these with the full matrix and put them into signature
+	possible_signature[mask] = np.asarray(X[mask[:,0],:].argmax(axis=1))[:,0]
+	M[:,cur_n] = possible_signature[:,0]
             
 def create_signatures(X, num_sig):
 	# signature matrix
@@ -54,12 +63,13 @@ def create_signatures(X, num_sig):
 		#M[:,i] = X.argmax(axis=1) # have to find a better way to find first nonzero\
 		
 		#use find_signatures function
-		find_signatures(M, X.tocsr(), i)
+		# find_signatures(M, X.tocsr(), i)
+		find_signatures3(M, X, i)
 
 	return M
 
-#M = create_signatures(X, 64)
-M = np.load('./signature_matrix.npy') # for testing purposes (50 signatures)
+M = create_signatures(X, 64)
+# M = np.load('./signature_matrix.npy') # for testing purposes (50 signatures)
 
 # break signatures into b bands
 def partition_into_bands(M, b):
