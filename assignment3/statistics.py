@@ -40,7 +40,7 @@ print ('Probability U1, U2 are identical in AT LEAST two bands')
 print (users_identical_in_ATLEAST_two_bands(similarity,signature_length,num_bands))
 
 
-def calc_probabilities(similarity1, similarity2):
+def calc_probabilities_minus(similarity1, similarity2):
 	
 	assert similarity1 > similarity2
 
@@ -57,26 +57,75 @@ def calc_probabilities(similarity1, similarity2):
 
 	return probabilities1, probabilities2
 
-probabilities1, probabilities2 = calc_probabilities(0.5,0.1)
+def calc_minus_probabilities():
+	# Calculates (the prob we find U1,U2 in at least 1(and 2) bands 
+	# as function of signature length and number of bands
+	# assuming U1,U2 are 50 percent similar)
+	# minus ( the prob we find U1,U2 in at least 1(and 2) bands 
+	# as function of signature length and number of bands
+	# assuming U1,U2 are 10 percent similar))
 
-plt.pcolor(probabilities1)
-plt.title('Probability 0.5 similar in at least one band minus 0.1 similar')
-plt.colorbar()
-plt.xlabel('Number of bands (not real numbers)')
-plt.ylabel('Signature length (not real numbers)')
-plt.xticks(plt.xticks()[0],plt.xticks()[0]+2)
-plt.yticks(plt.yticks()[0],plt.yticks()[0]+50)
-plt.savefig('./probabilities1_05minus01')
-plt.show()
-plt.close()
+	probabilities1, probabilities2 = calc_probabilities_minus(0.5,0.1)
 
-plt.pcolor(probabilities2)
-plt.title('Probability similar in at least two band')
-plt.colorbar()
-plt.xlabel('Number of bands (not real numbers)')
-plt.ylabel('Signature length (not real numbers)')
-plt.xticks(plt.xticks()[0],plt.xticks()[0]+2)
-plt.yticks(plt.yticks()[0],plt.yticks()[0]+50)
-plt.savefig('./probabilities2_05minus01')
-plt.show()
-plt.close()
+	x = range(2,51)
+	y = range(50,151)
+	# x and y are bounds, so z should be the value *inside* those bounds.
+	# Therefore, remove the last value from the z array.
+	plt.pcolor(x, y, probabilities1[:-1,:-1])
+	plt.title('Probability 0.5 similar in at least one band minus 0.1 similar')
+	plt.colorbar()
+	plt.xlabel('Number of bands')
+	plt.ylabel('Signature length')
+	plt.savefig('./probabilities1_05minus01')
+	plt.show()
+	plt.close()
+
+	plt.pcolor(x, y, probabilities2[:-1,:-1])
+	plt.title('Probability similar in at least two band')
+	plt.colorbar()
+	plt.xlabel('Number of bands (not real numbers)')
+	plt.ylabel('Signature length (not real numbers)')
+	plt.savefig('./probabilities2_05minus01')
+	plt.show()
+	plt.close()
+
+calc_minus_probabilities()
+
+def calc_probabilities():	
+	# Calculates (the prob we find U1,U2 in at least 1(and 2) bands 
+	# as function of signature length and number of bands
+	# assuming U1,U2 are 50 percent similar)
+
+	probabilities1 = np.empty((101,50))
+	probabilities2 = np.empty((101,50))
+	similarity = 0.5
+
+	for i, signature_length in enumerate(range(50,151)):
+		for j, num_bands in enumerate(range(2,51)):
+			probabilities1[i,j] = users_identical_in_ATLEAST_one_band(similarity,signature_length,num_bands)
+			probabilities2[i,j] = users_identical_in_ATLEAST_two_bands(similarity,signature_length,num_bands)
+
+	x = range(2,51)
+	y = range(50,151)
+	# x and y are bounds, so z should be the value *inside* those bounds.
+	# Therefore, remove the last value from the z array.
+	plt.pcolor(x, y, probabilities1[:-1,:-1])
+	plt.title('Probability 0.5 similar in at least one band')
+	plt.colorbar()
+	plt.xlabel('Number of bands')
+	plt.ylabel('Signature length')
+	plt.savefig('./probabilities1_05')
+	plt.show()
+	plt.close()
+
+	plt.pcolor(x, y, probabilities2[:-1,:-1])
+	plt.title('Probability 0.5 similar in at least two band')
+	plt.colorbar()
+	plt.xlabel('Number of bands')
+	plt.ylabel('Signature length')
+	plt.savefig('./probabilities2_05')
+	plt.show()
+	plt.close()
+	
+calc_probabilities()
+

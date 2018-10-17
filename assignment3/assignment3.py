@@ -128,7 +128,7 @@ def check_buckets(list_of_buckets, user_dict, sharing_buckets):
 			# maar dat doen we nu niet.
 	return overlap_users
 
-overlap_users = check_buckets(list_of_buckets, user_dict, sharing_buckets=2) 
+overlap_users = check_buckets(list_of_buckets, user_dict, sharing_buckets=1) 
 
 def calculate_similarity(overlap_users, X):
 	# for the probable similar users, calculate the Jaccard Similarity
