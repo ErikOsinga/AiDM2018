@@ -78,7 +78,7 @@ def create_signatures(X, num_sig, testlength):
 
 M = create_signatures(X, 64, 600)
 
-np.save('./signature_matrix64.npy',M)
+# np.save('./signature_matrix64.npy',M)
 # M = np.load('./signature_matrix.npy') # for testing purposes (50 signatures)
 # M = np.load('./signature_matrix64.npy') # for testing purposes (64 signatures)
 
@@ -129,6 +129,28 @@ def check_buckets(list_of_buckets, user_dict, sharing_buckets):
 	return overlap_users
 
 overlap_users = check_buckets(list_of_buckets, user_dict, sharing_buckets=1) 
+#  duurt 137s om tot hier te komen met 64 sig, 600 columns, 16 bands and sharing_buckets=1
+
+def calculate_signature_similarities(overlap_users, M):
+	"""
+	For the probable similar users, calculate the similarity of their signatures
+	This is much quicker than calculating their actual similarity, and is 
+	hopefully a good approximation. Else we have to check the ones that make
+	this cut again in the calculate_similarity function
+	"""
+
+	F = open('./results_signature_sim.txt','w')
+	for user, values in overlap_users.items():
+		if len(values) < 20:
+			for overlap_user in values:
+				if user < overlap_user:
+					if jaccard_similarity_score(M[user], M[overlap_user]) >= 0.5:
+						# print ('Writing a user,user pair..')
+						F = open('./results_signature_sim.txt','a')
+						F.write('%s,%s,%s\n'%(user,overlap_user,jaccard_similarity_score(M[user], M[overlap_user])))
+						F.close()
+
+calculate_signature_similarities(overlap_users,M)
 
 def calculate_similarity(overlap_users, X):
 	# for the probable similar users, calculate the Jaccard Similarity
@@ -140,7 +162,7 @@ def calculate_similarity(overlap_users, X):
 	F = open('./results.txt','w')
 	for user, values in overlap_users.items(): 
 		print ('Amount of overlap users with this user:', len(values))
-		if len(values) < 10: # only compute similarity for this user if it shares buckets with < 10 users
+		if len(values) < 3: # only compute similarity for this user if it shares buckets with a few users
 			for overlap_user in values: 
 				if user < overlap_user:
 					# calculate the similarity for this user, overlap_user pair
@@ -153,8 +175,5 @@ def calculate_similarity(overlap_users, X):
 						# B.write('%s,%s,%s\n'%(user,overlap_user,jaccard_similarity_score(X[user], X[overlap_user])))
 						# B.close()
 
-calculate_similarity(overlap_users,X)
+# calculate_similarity(overlap_users,X)
 
-# 60 signatures and 15 bands
-# 64 signatures and 16 bands --> 50% chance to find 50% similar users
-# 							 --> 
