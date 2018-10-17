@@ -24,7 +24,6 @@ X = create_sparse_matrix2()
 def find_signatures(M, X, cur_n):   
    M[:,cur_n] = [X.indices[X.indptr[j]:X.indptr[j+1]][0] for j in range(X.shape[0])]
 
-
 def find_signatures2(M, X, cur_n):
    temp = np.array([X.indices[X.indptr[j]:X.indptr[j+1]] for j in range(X.shape[1])])
    k=0
@@ -34,17 +33,26 @@ def find_signatures2(M, X, cur_n):
             M[l,cur_n] = k
       k += 1
 
-def find_signatures3(M, X, cur_n): 
+def find_signatures3(M, X, cur_n, testlength): 
+	"""
+	M = 
+	X = 
+	cur_n = 
+	testlength = the amount of columns we inspect for the first nonzero argument
+	"""
 	# we expect the first 1 to occur with very high certainty in the first 
-	# 1000 columns, because every user has rated atleast 
-	possible_signature = np.asarray(X[:,:1000].argmax(axis=1))
+	# 1000 columns, because every user has rated atleast 300 movies 
+	possible_signature = np.asarray(X[:,:testlength].argmax(axis=1))
 	# find the small subset of users for which this (possibly) didnt work
-	mask = possible_signature == 0
-	# calculate these with the full matrix and put them into signature
-	possible_signature[mask] = np.asarray(X[mask[:,0],:].argmax(axis=1))[:,0]
+	# it did work if those users actually contain a 1 in the first column
+	# so we mask these users out of the mask
+	mask = ( (possible_signature == 0)[:,0] & (X[:,0].toarray() == 0)[:,0] )
+	if np.sum(mask) != 0:
+		# print ('For %i users we did not find the first nonzero'%np.sum(mask))
+		possible_signature[mask] = np.asarray(X[mask,:].argmax(axis=1))
 	M[:,cur_n] = possible_signature[:,0]
             
-def create_signatures(X, num_sig):
+def create_signatures(X, num_sig, testlength):
 	# signature matrix
 	M = np.zeros((X.shape[0],num_sig)) #(users,signatures)
 	M.fill(np.nan)
@@ -64,12 +72,15 @@ def create_signatures(X, num_sig):
 		
 		#use find_signatures function
 		# find_signatures(M, X.tocsr(), i)
-		find_signatures3(M, X, i)
+		find_signatures3(M, X, i, testlength)
 
 	return M
 
-M = create_signatures(X, 64)
+M = create_signatures(X, 64, 600)
+
+np.save('./signature_matrix64.npy',M)
 # M = np.load('./signature_matrix.npy') # for testing purposes (50 signatures)
+# M = np.load('./signature_matrix64.npy') # for testing purposes (64 signatures)
 
 # break signatures into b bands
 def partition_into_bands(M, b):
@@ -127,20 +138,23 @@ def calculate_similarity(overlap_users, X):
 	# or 1 - scipy.spatial.distance.jaccard
 	print ('Going to check overlap users now:', len(overlap_users))
 	F = open('./results.txt','w')
-	for user, values in overlap_users.items():
-		for overlap_user in values: 
-			if user < overlap_user:
-				print user
-				# calculate the similarity for this user, overlap_user pair
-				if jaccard_similarity_score(X[user], X[overlap_user]) >= 0.5:
-					F = open('./results.txt','a')
-					F.write('%s,%s\n'%(user,overlap_user))
-					F.close()
-					# temporary for checking purposes
-					# B = open('./results_test.txt','a')
-					# B.write('%s,%s,%s\n'%(user,overlap_user,jaccard_similarity_score(X[user], X[overlap_user])))
-					# B.close()
+	for user, values in overlap_users.items(): 
+		print ('Amount of overlap users with this user:', len(values))
+		if len(values) < 10: # only compute similarity for this user if it shares buckets with < 10 users
+			for overlap_user in values: 
+				if user < overlap_user:
+					# calculate the similarity for this user, overlap_user pair
+					if jaccard_similarity_score(X[user], X[overlap_user]) >= 0.5:
+						F = open('./results.txt','a')
+						F.write('%s,%s\n'%(user,overlap_user))
+						F.close()
+						# temporary for checking purposes
+						# B = open('./results_test.txt','a')
+						# B.write('%s,%s,%s\n'%(user,overlap_user,jaccard_similarity_score(X[user], X[overlap_user])))
+						# B.close()
 
 calculate_similarity(overlap_users,X)
 
 # 60 signatures and 15 bands
+# 64 signatures and 16 bands --> 50% chance to find 50% similar users
+# 							 --> 
