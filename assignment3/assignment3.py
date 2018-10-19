@@ -22,7 +22,7 @@ def create_sparse_matrix2():
 X = create_sparse_matrix2()
 
 def find_signatures(M, X, cur_n):   
-   M[:,cur_n] = [X.indices[X.indptr[j]:X.indptr[j+1]][0] for j in range(X.shape[0])]
+	M[:,cur_n] = [X.indices[X.indptr[j]:X.indptr[j+1]][0] for j in range(X.shape[0])]
 
 def find_signatures2(M, X, cur_n):
    temp = np.array([X.indices[X.indptr[j]:X.indptr[j+1]] for j in range(X.shape[1])])
@@ -76,7 +76,7 @@ def create_signatures(X, num_sig, testlength):
 
 	return M
 
-M = create_signatures(X, 64, 600)
+M = create_signatures(X, 90, 600)
 
 # np.save('./signature_matrix64.npy',M)
 # M = np.load('./signature_matrix.npy') # for testing purposes (50 signatures)
@@ -103,7 +103,7 @@ def partition_into_bands(M, b):
 
 	return list_of_buckets, user_dict
 
-b = 16 # more bands makes it slower
+b = 30 # more bands makes it slower
 list_of_buckets, user_dict = partition_into_bands(M,b)
 
 def check_buckets(list_of_buckets, user_dict, sharing_buckets):
@@ -118,11 +118,11 @@ def check_buckets(list_of_buckets, user_dict, sharing_buckets):
 		#list with all users which are in the same bucket as a specific user in any band
 		buckets_list = [list_of_buckets[i][user_dict[user][i]] for i in range(len(list_of_buckets))] 
 		# flatten it to find unique elements
- 		buckets_list = np.hstack(buckets_list)
+		buckets_list = np.hstack(buckets_list)
 		(users, counts) = np.unique(buckets_list,return_counts=True)
 		users = users[counts > sharing_buckets] # [current user, any users that it shares > 1 bucket with]
 		if len(users) > 1:
-			overlap_users[users[0]] = users[1:]
+			overlap_users[user] = users[1:]
 			# misschien dat we hier moeten checken op users die al geweest zijn
 			# bijv 0,5 .. als we dan bij user 5 komen hoeft die niet weer met 0 
 			# maar dat doen we nu niet.
@@ -141,7 +141,7 @@ def calculate_signature_similarities(overlap_users, M):
 
 	F = open('./results_signature_sim.txt','w')
 	for user, values in overlap_users.items():
-		if len(values) < 20:
+		if len(values) < 400:
 			for overlap_user in values:
 				if user < overlap_user:
 					if jaccard_similarity_score(M[user], M[overlap_user]) >= 0.5:
@@ -150,7 +150,62 @@ def calculate_signature_similarities(overlap_users, M):
 						F.write('%s,%s,%s\n'%(user,overlap_user,jaccard_similarity_score(M[user], M[overlap_user])))
 						F.close()
 
-calculate_signature_similarities(overlap_users,M)
+# calculate_signature_similarities(overlap_users,M)
+
+"""
+Attempt to narrow down the scope of our search by assigning weights to signatures
+"""
+
+def signature_weight(overlap_users, list_of_buckets, M):
+	"""
+	Calculate the mean of the signature for the buckets in which the users overlap in their signatures
+	If the mean is high, then it means it is more 'special' that they fall in the same bucket
+	"""
+	bucket_weight = dict()
+	overlap_buckets2 = []
+	for user in overlap_users.keys():
+		for user2 in overlap_users[user]:
+			if user2 > user:
+				overlap_buckets2.append([user_dict[user][i] for i in range(len(user_dict[user])) if user_dict[user][i] == user_dict[user2][i]])
+				overlap_buckets = np.array([np.mean(user_dict[user][i]) for i in range(len(user_dict[user])) if user_dict[user][i] == user_dict[user2][i]])
+	 			if (overlap_buckets > 42).any():
+	 				bucket_weight[user, user2] = overlap_buckets[overlap_buckets > 42]
+	return bucket_weight
+
+bucket_weights = signature_weight(overlap_users, list_of_buckets, M)
+
+def calculate_signature_similarities_weights(bucket_weight, M, sig_all):
+	"""
+	For the probable similar users, calculate the similarity of their signatures
+	This is much quicker than calculating their actual similarity, and is 
+	hopefully a good approximation. Else we have to check the ones that make
+	this cut again in the calculate_similarity function
+	"""
+	if sig_all:
+		F = open('./results_signature_sim_weights.txt','w')
+		for user, user2 in bucket_weight.keys():
+			sim = jaccard_similarity_score(M[user], M[user2])
+
+			if sim >= 0.5:
+				# print ('Writing a user,user pair..')
+				F = open('./results_signature_sim_weights.txt','a')
+				F.write('%s,%s,%3f,%3f\n'%(user,user2,sim,jaccard_similarity_score(X[user], X[user2])))
+				F.close()
+	else:
+		F = open('./results_user_sim_weights.txt','w')
+		for user, user2 in bucket_weight.keys():
+			sim = jaccard_similarity_score(X[user], X[user2])
+
+			if sim >= 0.5:
+				# print ('Writing a user,user pair..')
+				F = open('./results_signature_sim_weights.txt','a')
+				F.write('%s,%s,%3f\n'%(user,user2,sim,))
+				F.close()
+
+#calculate_signature_similarities_weights(bucket_weights,M, False)
+
+
+
 
 def calculate_similarity(overlap_users, X):
 	# for the probable similar users, calculate the Jaccard Similarity
