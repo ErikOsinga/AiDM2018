@@ -21,20 +21,15 @@ def create_sparse_matrix():
 
 	return X
 
-X = create_sparse_matrix()
 
-def find_signatures(M, X, cur_n):   
-	M[:,cur_n] = [X.indices[X.indptr[j]:X.indptr[j+1]][0] for j in range(X.shape[0])]
-
-
-
-def find_signatures(M, X, cur_n, testlength): 
+def find_signatures(M, X, cur_n): 
 	"""
 	M = signature matrix (users x signatures)
 	X = sparse array of size (users x movies)
 	cur_n = current iteration in len(signatures)
 	testlength = the amount of columns we inspect for the first nonzero argument
 	"""
+	testlength = 600
 	# we expect the first 1 to occur with very high certainty in the first 
 	# 600 columns, because every user has rated atleast 300 movies 
 	possible_signature = np.asarray(X[:,:testlength].argmax(axis=1))
@@ -47,7 +42,7 @@ def find_signatures(M, X, cur_n, testlength):
 		possible_signature[mask] = np.asarray(X[mask,:].argmax(axis=1))
 	M[:,cur_n] = possible_signature[:,0]
 			
-def create_signatures(X, num_sig, testlength):
+def create_signatures(X, num_sig):
 	print("Creating signatures...")
 	M = np.zeros((X.shape[0],num_sig)) #signature matrix (users,signatures)
 
@@ -57,18 +52,15 @@ def create_signatures(X, num_sig, testlength):
 		np.random.shuffle(shuff_list)
 		X = X[:,shuff_list]
 
-		find_signatures(M, X, i, testlength)
+		find_signatures(M, X, i)
 
 	return M
-
-M = create_signatures(X, 64, 600)
 
 # break signatures into b bands
 def partition_into_bands(M, b):
 	print("Partitioning into bands...")
 	# list of bands
 	A = np.split(M, b, axis=1) # can only split into M.shape[1]/b = integer bands
-								# or use np.vsplit
 	# represent each band by a tuple
 	list_of_buckets = [] # we want a dictionary of signature:[users] for each band
 	for band in range(len(A)):
@@ -84,22 +76,27 @@ def partition_into_bands(M, b):
 
 	return list_of_buckets#, user_dict
 
-b = 16 # more bands makes it slower
-list_of_buckets = partition_into_bands(M,b)
-
-def unique_user_pairs(list_of_buckets):
+def unique_user_pairs(list_of_buckets, sig_len):
 	unique_pairs = set()
-	print("Finding unique pairs...")
+	unique_pairs2 = set()
+	print("Finding unique candidate pairs...")
 	for i in range(len(list_of_buckets)):
 		for bucket in list_of_buckets[i].keys():
-			all_pairs = set(pair for pair in itertools.combinations(list_of_buckets[i][bucket], 2))
-			all_pairs = all_pairs.difference(unique_pairs)
-			for test_pair in all_pairs:
-				sim = float(np.count_nonzero(M[test_pair[0]] == M[test_pair[1]]))/64.
-				if sim > 0.5:
-					unique_pairs.add(test_pair)
+			if len(list_of_buckets[i][bucket]) < 1000:
+				all_pairs = set(pair for pair in itertools.combinations(list_of_buckets[i][bucket], 2))
+				all_pairs = all_pairs.difference(unique_pairs)
+				for test_pair in all_pairs:
+					sim = float(np.count_nonzero(M[test_pair[0]] == M[test_pair[1]]))/sig_len
+					if sim > 0.5:
+						unique_pairs.add(test_pair)
+#			else:
+#				all_pairs = set(pair for pair in itertools.combinations(list_of_buckets[i][bucket][:1000], 2))
+#				all_pairs = all_pairs.difference(unique_pairs)
+#				for test_pair in all_pairs:
+#					sim = float(np.count_nonzero(M[test_pair[0]] == M[test_pair[1]]))/sig_len
+#					if sim > 0.5:
+#						unique_pairs.add(test_pair)
 	return unique_pairs
-unique = unique_user_pairs(list_of_buckets)
 
 def jaccard_calculation(unique_pairs, X):
 	print("Calculating Jaccard Similarity...")
@@ -108,10 +105,47 @@ def jaccard_calculation(unique_pairs, X):
 	for user1, user2 in unique_pairs:
 		intersection = np.sum(X_array[user1, :] & X_array[user2, :])
 		union = np.sum(X_array[user1, :] | X_array[user2, :])
-		jaccard_sim = float(intersection)/float(union)
+		jaccard_sim = float(intersection)/union
 		if jaccard_sim >= 0.5:
 			F = open('./results.txt', 'a')
 			F.write('%s,%s,%s\n'%(user1,user2,jaccard_sim))
 			F.close()
 
+def check_extra_overlap():
+	X_array = X.A
+	all_sim = np.loadtxt('./results.txt', delimiter = ',', usecols=(0,1))
+	unique_elements = np.unique(all_sim)
+	pairs = set(pair for pair in itertools.combinations(unique_elements, 2))
+	for test_pair in pairs:
+		if test_pair not in all_sim:
+			intersection = np.sum(X_array[int(test_pair[0]), :] & X_array[int(test_pair[1]), :])
+			union = np.sum(X_array[int(test_pair[0]), :] | X_array[int(test_pair[1]), :])
+			jaccard_sim = float(intersection)/union
+			if jaccard_sim >= 0.5:
+				print test_pair
+				F = open('./results.txt', 'a')
+				F.write('%s,%s,%s\n'%(int(test_pair[0]),int(test_pair[1]),jaccard_sim))
+				F.close()
+
+
+
+#Set parameters:
+sig_len = 92 #length of signature
+b = 23 #number of bands
+
+#Create a sparse matrix of (users x movies):
+X = create_sparse_matrix()
+
+#Create signatures of length sig_len:
+M = create_signatures(X, sig_len)
+
+#Hash signatures into buckets using b bands:
+list_of_buckets = partition_into_bands(M,b)
+
+#Find the unique user pairs which are candidates for being similar
+unique = unique_user_pairs(list_of_buckets, float(sig_len))
+
+#Calculate the actual similarity of the candidate pairs and write to a file
 sim_users = jaccard_calculation(unique, X)
+
+check_extra_overlap()
