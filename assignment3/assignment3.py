@@ -1,47 +1,42 @@
 import sys
 import numpy as np
-from scipy.sparse import csc_matrix, hstack
+from scipy.sparse import csc_matrix
 from collections import defaultdict
-from sklearn.metrics import jaccard_similarity_score
+import itertools
 
 print ('Setting the random seed to:', sys.argv[1])
 np.random.seed(int(sys.argv[1]))
+
+print("Loading data...")
 
 pairs = np.load('./user_movie.npy')
 
 users = pairs[:,0]
 movies = pairs[:,1]
 
-def create_sparse_matrix2():
+def create_sparse_matrix():
 	data = np.ones(len(users)) # create 65M ones
 	# construct the sparse matrix containing ones where (user,movie) is rated
-	X = csc_matrix((data, (users, movies)))
+	X = csc_matrix((data, (users, movies)), dtype = np.int8)
 
 	return X
 
-X = create_sparse_matrix2()
+X = create_sparse_matrix()
 
 def find_signatures(M, X, cur_n):   
 	M[:,cur_n] = [X.indices[X.indptr[j]:X.indptr[j+1]][0] for j in range(X.shape[0])]
 
-def find_signatures2(M, X, cur_n):
-   temp = np.array([X.indices[X.indptr[j]:X.indptr[j+1]] for j in range(X.shape[1])])
-   k=0
-   while np.isnan(M[:,cur_n]).any():
-      for l in temp[k]:
-         if np.isnan(M[l,cur_n]):
-            M[l,cur_n] = k
-      k += 1
 
-def find_signatures3(M, X, cur_n, testlength): 
+
+def find_signatures(M, X, cur_n, testlength): 
 	"""
-	M = 
-	X = 
-	cur_n = 
+	M = signature matrix (users x signatures)
+	X = sparse array of size (users x movies)
+	cur_n = current iteration in len(signatures)
 	testlength = the amount of columns we inspect for the first nonzero argument
 	"""
 	# we expect the first 1 to occur with very high certainty in the first 
-	# 1000 columns, because every user has rated atleast 300 movies 
+	# 600 columns, because every user has rated atleast 300 movies 
 	possible_signature = np.asarray(X[:,:testlength].argmax(axis=1))
 	# find the small subset of users for which this (possibly) didnt work
 	# it did work if those users actually contain a 1 in the first column
@@ -51,184 +46,72 @@ def find_signatures3(M, X, cur_n, testlength):
 		# print ('For %i users we did not find the first nonzero'%np.sum(mask))
 		possible_signature[mask] = np.asarray(X[mask,:].argmax(axis=1))
 	M[:,cur_n] = possible_signature[:,0]
-            
+			
 def create_signatures(X, num_sig, testlength):
-	# signature matrix
-	M = np.zeros((X.shape[0],num_sig)) #(users,signatures)
-	M.fill(np.nan)
+	print("Creating signatures...")
+	M = np.zeros((X.shape[0],num_sig)) #signature matrix (users,signatures)
+
 	shuff_list = np.arange(X.shape[1])
 	for i in range(num_sig): # create num_sig permutations 
-		print(i)
-#		np.random.shuffle(movies) # permute the movies
 
-		#alternative to shuffle:
 		np.random.shuffle(shuff_list)
 		X = X[:,shuff_list]
 
-#		X = csr_matrix((X.data, (users, movies)))
-        
-		# save the indices of the first nonzero of every user for this permutation
-		#M[:,i] = X.argmax(axis=1) # have to find a better way to find first nonzero\
-		
-		#use find_signatures function
-		# find_signatures(M, X.tocsr(), i)
-		find_signatures3(M, X, i, testlength)
+		find_signatures(M, X, i, testlength)
 
 	return M
 
-M = create_signatures(X, 90, 600)
-
-# np.save('./signature_matrix64.npy',M)
-# M = np.load('./signature_matrix.npy') # for testing purposes (50 signatures)
-# M = np.load('./signature_matrix64.npy') # for testing purposes (64 signatures)
+M = create_signatures(X, 64, 600)
 
 # break signatures into b bands
 def partition_into_bands(M, b):
-
+	print("Partitioning into bands...")
 	# list of bands
 	A = np.split(M, b, axis=1) # can only split into M.shape[1]/b = integer bands
 								# or use np.vsplit
 	# represent each band by a tuple
-	user_dict = defaultdict(list) # dictionary with the users as keys and buckets as values
 	list_of_buckets = [] # we want a dictionary of signature:[users] for each band
 	for band in range(len(A)):
 		buckets = defaultdict(list)
 		for user in range(A[band].shape[0]):
 			tup = tuple(A[band][user]) # the part of the signature in this band
-
-			user_dict[user].append(tup)
 			buckets[tup].append(user)
+		for i in list(buckets.keys()):
+			if len(buckets[i]) == 1:
+				del buckets[i]
 
 		list_of_buckets.append(buckets) # list of 'band' number of buckets 
 
-	return list_of_buckets, user_dict
+	return list_of_buckets#, user_dict
 
-b = 30 # more bands makes it slower
-list_of_buckets, user_dict = partition_into_bands(M,b)
+b = 16 # more bands makes it slower
+list_of_buckets = partition_into_bands(M,b)
 
-def check_buckets(list_of_buckets, user_dict, sharing_buckets):
-	"""
-	Check how many users are in each bucket in each band. Save only the ones 
-	that have multiple users in a bucket in 'sharing_buckets' amount of bands 
-	"""
-	overlap_users = dict() #dictionary with key:user, values:list of all users with which it shares >1 bucket
+def unique_user_pairs(list_of_buckets):
+	unique_pairs = set()
+	print("Finding unique pairs...")
+	for i in range(len(list_of_buckets)):
+		for bucket in list_of_buckets[i].keys():
+			all_pairs = set(pair for pair in itertools.combinations(list_of_buckets[i][bucket], 2))
+			all_pairs = all_pairs.difference(unique_pairs)
+			for test_pair in all_pairs:
+				sim = float(np.count_nonzero(M[test_pair[0]] == M[test_pair[1]]))/64.
+				if sim > 0.5:
+					unique_pairs.add(test_pair)
+	return unique_pairs
+unique = unique_user_pairs(list_of_buckets)
 
-	for user in user_dict.keys():
-
-		#list with all users which are in the same bucket as a specific user in any band
-		buckets_list = [list_of_buckets[i][user_dict[user][i]] for i in range(len(list_of_buckets))] 
-		# flatten it to find unique elements
-		buckets_list = np.hstack(buckets_list)
-		(users, counts) = np.unique(buckets_list,return_counts=True)
-		users = users[counts > sharing_buckets] # [current user, any users that it shares > 1 bucket with]
-		if len(users) > 1:
-			overlap_users[user] = users[1:]
-			# misschien dat we hier moeten checken op users die al geweest zijn
-			# bijv 0,5 .. als we dan bij user 5 komen hoeft die niet weer met 0 
-			# maar dat doen we nu niet.
-	return overlap_users
-
-overlap_users = check_buckets(list_of_buckets, user_dict, sharing_buckets=1) 
-#  duurt 137s om tot hier te komen met 64 sig, 600 columns, 16 bands and sharing_buckets=1
-
-def calculate_signature_similarities(overlap_users, M):
-	"""
-	For the probable similar users, calculate the similarity of their signatures
-	This is much quicker than calculating their actual similarity, and is 
-	hopefully a good approximation. Else we have to check the ones that make
-	this cut again in the calculate_similarity function
-	"""
-
-	F = open('./results_signature_sim.txt','w')
-	for user, values in overlap_users.items():
-		if len(values) < 400:
-			for overlap_user in values:
-				if user < overlap_user:
-					if jaccard_similarity_score(M[user], M[overlap_user]) >= 0.5:
-						# print ('Writing a user,user pair..')
-						F = open('./results_signature_sim.txt','a')
-						F.write('%s,%s,%s\n'%(user,overlap_user,jaccard_similarity_score(M[user], M[overlap_user])))
-						F.close()
-
-# calculate_signature_similarities(overlap_users,M)
-
-"""
-Attempt to narrow down the scope of our search by assigning weights to signatures
-"""
-
-def signature_weight(overlap_users, list_of_buckets, M):
-	"""
-	Calculate the mean of the signature for the buckets in which the users overlap in their signatures
-	If the mean is high, then it means it is more 'special' that they fall in the same bucket
-	"""
-	bucket_weight = dict()
-	overlap_buckets2 = []
-	for user in overlap_users.keys():
-		for user2 in overlap_users[user]:
-			if user2 > user:
-				overlap_buckets2.append([user_dict[user][i] for i in range(len(user_dict[user])) if user_dict[user][i] == user_dict[user2][i]])
-				overlap_buckets = np.array([np.mean(user_dict[user][i]) for i in range(len(user_dict[user])) if user_dict[user][i] == user_dict[user2][i]])
-	 			if (overlap_buckets > 42).any():
-	 				bucket_weight[user, user2] = overlap_buckets[overlap_buckets > 42]
-	return bucket_weight
-
-bucket_weights = signature_weight(overlap_users, list_of_buckets, M)
-
-def calculate_signature_similarities_weights(bucket_weight, M, sig_all):
-	"""
-	For the probable similar users, calculate the similarity of their signatures
-	This is much quicker than calculating their actual similarity, and is 
-	hopefully a good approximation. Else we have to check the ones that make
-	this cut again in the calculate_similarity function
-	"""
-	if sig_all:
-		F = open('./results_signature_sim_weights.txt','w')
-		for user, user2 in bucket_weight.keys():
-			sim = jaccard_similarity_score(M[user], M[user2])
-
-			if sim >= 0.5:
-				# print ('Writing a user,user pair..')
-				F = open('./results_signature_sim_weights.txt','a')
-				F.write('%s,%s,%3f,%3f\n'%(user,user2,sim,jaccard_similarity_score(X[user], X[user2])))
-				F.close()
-	else:
-		F = open('./results_user_sim_weights.txt','w')
-		for user, user2 in bucket_weight.keys():
-			sim = jaccard_similarity_score(X[user], X[user2])
-
-			if sim >= 0.5:
-				# print ('Writing a user,user pair..')
-				F = open('./results_signature_sim_weights.txt','a')
-				F.write('%s,%s,%3f\n'%(user,user2,sim,))
-				F.close()
-
-#calculate_signature_similarities_weights(bucket_weights,M, False)
-
-
-
-
-def calculate_similarity(overlap_users, X):
-	# for the probable similar users, calculate the Jaccard Similarity
-	# Defined as Sim(U1,U2) = |C1 <intersection> C2| / |C1 <union> C2|
-
-	# either use sklearn.metrics.jaccard_similarity_score 
-	# or 1 - scipy.spatial.distance.jaccard
-	print ('Going to check overlap users now:', len(overlap_users))
+def jaccard_calculation(unique_pairs, X):
+	print("Calculating Jaccard Similarity...")
+	X_array = X.A
 	F = open('./results.txt','w')
-	for user, values in overlap_users.items(): 
-		print ('Amount of overlap users with this user:', len(values))
-		if len(values) < 3: # only compute similarity for this user if it shares buckets with a few users
-			for overlap_user in values: 
-				if user < overlap_user:
-					# calculate the similarity for this user, overlap_user pair
-					if jaccard_similarity_score(X[user], X[overlap_user]) >= 0.5:
-						F = open('./results.txt','a')
-						F.write('%s,%s\n'%(user,overlap_user))
-						F.close()
-						# temporary for checking purposes
-						# B = open('./results_test.txt','a')
-						# B.write('%s,%s,%s\n'%(user,overlap_user,jaccard_similarity_score(X[user], X[overlap_user])))
-						# B.close()
+	for user1, user2 in unique_pairs:
+		intersection = np.sum(X_array[user1, :] & X_array[user2, :])
+		union = np.sum(X_array[user1, :] | X_array[user2, :])
+		jaccard_sim = float(intersection)/float(union)
+		if jaccard_sim >= 0.5:
+			F = open('./results.txt', 'a')
+			F.write('%s,%s,%s\n'%(user1,user2,jaccard_sim))
+			F.close()
 
-# calculate_similarity(overlap_users,X)
-
+sim_users = jaccard_calculation(unique, X)
