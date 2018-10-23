@@ -9,12 +9,11 @@ np.random.seed(int(sys.argv[1]))
 
 print("Loading data from file: ", sys.argv[2])
 file = sys.argv[2]
-pairs = np.load(file)
-
-users = pairs[:,0]
-movies = pairs[:,1]
 
 def create_sparse_matrix():
+	pairs = np.load(file)
+	users = pairs[:,0]
+	movies = pairs[:,1]
 	data = np.ones(len(users)) # Create 65M ones
 	# Construct the sparse matrix containing ones where (user,movie) is rated
 	X = csc_matrix((data, (users, movies)), dtype = np.int8)
