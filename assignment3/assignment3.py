@@ -7,14 +7,14 @@ import itertools
 print ('Setting the random seed to:', sys.argv[1])
 np.random.seed(int(sys.argv[1]))
 
-print("Loading data from file: ", sys.argv[2])
-file = sys.argv[2]
-pairs = np.load(file)
-
-users = pairs[:,0]
-movies = pairs[:,1]
 
 def create_sparse_matrix():
+	file = sys.argv[2]
+	pairs = np.load(file)
+
+	users = pairs[:,0]
+	movies = pairs[:,1]
+
 	data = np.ones(len(users)) # Create 65M ones
 	# Construct the sparse matrix containing ones where (user,movie) is rated
 	X = csc_matrix((data, (users, movies)), dtype = np.int8)
@@ -90,13 +90,15 @@ def unique_user_pairs(list_of_buckets, sig_len):
 					sim = np.count_nonzero(M[test_pair[0]] == M[test_pair[1]])/sig_len
 					if sim > 0.5:
 						unique_pairs.add(test_pair)
-#			else:
-#				all_pairs = set(pair for pair in itertools.combinations(list_of_buckets[i][bucket][:1000], 2))
-#				all_pairs = all_pairs.difference(unique_pairs)
-#				for test_pair in all_pairs:
-#					sim = float(np.count_nonzero(M[test_pair[0]] == M[test_pair[1]]))/sig_len
-#					if sim > 0.5:
-#						unique_pairs.add(test_pair)
+			else:
+				A = np.array_split(list_of_buckets[i][bucket], int(len(list_of_buckets[i][bucket])/200))
+				for j in range(len(A)):
+					all_pairs = set(pair for pair in itertools.combinations(A[j], 2))
+					all_pairs = all_pairs.difference(unique_pairs)
+					for test_pair in all_pairs:
+						sim = float(np.count_nonzero(M[test_pair[0]] == M[test_pair[1]]))/sig_len
+						if sim > 0.5:
+							unique_pairs.add(test_pair)
 	return unique_pairs
 
 def jaccard_calculation(unique_pairs, X):
@@ -115,6 +117,7 @@ def check_extra_overlap():
 	X_array = X.A
 	# We check all possible combinations of users that we have found in results.txt
 	all_sim = np.loadtxt('./results.txt', delimiter = ',', usecols=(0,1))
+	count = len(all_sim)
 	all_set = set(tuple(pair) for pair in all_sim)
 	unique_elements = np.unique(all_sim)
 	pairs = set(pair for pair in itertools.combinations(unique_elements, 2))
@@ -127,13 +130,14 @@ def check_extra_overlap():
 			union = np.sum(X_array[int(test_pair[0]), :] | X_array[int(test_pair[1]), :])
 			jaccard_sim = intersection/union
 			if jaccard_sim >= 0.5:
+				count += 1
 				print (test_pair)
 				F.write('%s,%s,%s\n'%(int(test_pair[0]),int(test_pair[1]),jaccard_sim))
 	F.close()
 
 #Set parameters:
-sig_len = 92 #length of signature
-b = 23 #number of bands
+sig_len = 64 #length of signature
+b = 16 #number of bands
 
 #Create a sparse matrix of (users x movies):
 X = create_sparse_matrix()
@@ -146,7 +150,7 @@ list_of_buckets = partition_into_bands(M,b)
 
 #Find the unique user pairs which are candidates for being similar
 unique = unique_user_pairs(list_of_buckets, sig_len)
-
+print len(unique)
 #Calculate the actual similarity of the candidate pairs and write to a file
 sim_users = jaccard_calculation(unique, X)
 
