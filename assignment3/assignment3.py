@@ -110,26 +110,6 @@ def jaccard_calculation(unique_pairs, X):
 			F.write('%s,%s,%s\n'%(user1,user2,jaccard_sim))
 	F.close()
 
-def check_extra_overlap():
-	X_array = X.A
-	# We check all possible combinations of users that we have found in results.txt
-	all_sim = np.loadtxt('./results.txt', delimiter = ',', usecols=(0,1))
-	all_set = set(tuple(pair) for pair in all_sim)
-	unique_elements = np.unique(all_sim)
-	pairs = set(pair for pair in itertools.combinations(unique_elements, 2))
-	# Find the users we have not yet compared
-	pairs = pairs.difference(all_set)
-	F = open('./results.txt', 'a')
-	for test_pair in pairs:
-		if test_pair not in all_sim:
-			intersection = np.sum(X_array[int(test_pair[0]), :] & X_array[int(test_pair[1]), :])
-			union = np.sum(X_array[int(test_pair[0]), :] | X_array[int(test_pair[1]), :])
-			jaccard_sim = intersection/union
-			if jaccard_sim >= 0.5:
-				print (test_pair)
-				F.write('%s,%s,%s\n'%(int(test_pair[0]),int(test_pair[1]),jaccard_sim))
-	F.close()
-
 #Set parameters:
 sig_len = 92 #length of signature
 b = 23 #number of bands
@@ -148,5 +128,3 @@ unique = unique_user_pairs(list_of_buckets, sig_len)
 
 #Calculate the actual similarity of the candidate pairs and write to a file
 sim_users = jaccard_calculation(unique, X)
-
-check_extra_overlap()
