@@ -4,6 +4,8 @@ from scipy.sparse import csc_matrix
 from collections import defaultdict
 import itertools
 
+# Authors: Joey Braspenning and Erik Osinga
+
 np.random.seed(int(sys.argv[1]))
 file = sys.argv[2]
 
@@ -72,7 +74,6 @@ def partition_into_bands(M, b):
 def unique_user_pairs(list_of_buckets, sig_len):
 	unique_pairs = set()
 	unique_pairs2 = set()
-	print("Finding unique candidate pairs...")
 	for i in range(len(list_of_buckets)):
 		for bucket in list_of_buckets[i].keys():
 			if len(list_of_buckets[i][bucket]) < 1000:
@@ -80,13 +81,12 @@ def unique_user_pairs(list_of_buckets, sig_len):
 				all_pairs = all_pairs.difference(unique_pairs) # Check if we dont already have this pair
 				for test_pair in all_pairs:
 					# Python3+ has automatic float division, no casting required
-					if sim > np.count_nonzero(M[test_pair[0]] == M[test_pair[1]])/sig_len:
+					if np.count_nonzero(M[test_pair[0]] == M[test_pair[1]])/sig_len > 0.5: #signature sim
 						unique_pairs.add(test_pair)
 						
 	return unique_pairs
 
 def jaccard_calculation(unique_pairs, X):
-	print("Calculating Jaccard Similarity...")
 	X_array = X.A
 	F = open('./results.txt','w')
 	for user1, user2 in unique_pairs:
