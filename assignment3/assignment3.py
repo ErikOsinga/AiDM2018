@@ -89,13 +89,7 @@ def unique_user_pairs(list_of_buckets, sig_len):
 					sim = np.count_nonzero(M[test_pair[0]] == M[test_pair[1]])/sig_len
 					if sim > 0.5:
 						unique_pairs.add(test_pair)
-#			else:
-#				all_pairs = set(pair for pair in itertools.combinations(list_of_buckets[i][bucket][:1000], 2))
-#				all_pairs = all_pairs.difference(unique_pairs)
-#				for test_pair in all_pairs:
-#					sim = float(np.count_nonzero(M[test_pair[0]] == M[test_pair[1]]))/sig_len
-#					if sim > 0.5:
-#						unique_pairs.add(test_pair)
+						
 	return unique_pairs
 
 def jaccard_calculation(unique_pairs, X):
