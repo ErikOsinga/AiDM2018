@@ -7,9 +7,9 @@ import itertools
 print ('Setting the random seed to:', sys.argv[1])
 np.random.seed(int(sys.argv[1]))
 
-print("Loading data...")
-
-pairs = np.load('./user_movie.npy')
+print("Loading data from file: ", sys.argv[2])
+file = sys.argv[2]
+pairs = np.load(file)
 
 users = pairs[:,0]
 movies = pairs[:,1]
@@ -20,7 +20,6 @@ def create_sparse_matrix():
 	X = csc_matrix((data, (users, movies)), dtype = np.int8)
 
 	return X
-
 
 def find_signatures(M, X, cur_n): 
 	"""
@@ -122,12 +121,10 @@ def check_extra_overlap():
 			union = np.sum(X_array[int(test_pair[0]), :] | X_array[int(test_pair[1]), :])
 			jaccard_sim = float(intersection)/union
 			if jaccard_sim >= 0.5:
-				print test_pair
+				print (test_pair)
 				F = open('./results.txt', 'a')
 				F.write('%s,%s,%s\n'%(int(test_pair[0]),int(test_pair[1]),jaccard_sim))
 				F.close()
-
-
 
 #Set parameters:
 sig_len = 92 #length of signature
